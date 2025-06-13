@@ -5,7 +5,7 @@
 <p align="center">
 <a href="#tech">Technologies</a>
 <a href="#started">Getting Started</a>
-
+<a href="#licence">Licence</a>
  
 </p>
 
@@ -49,3 +49,8 @@ or:
 ```bash
 run discustom.exe
 ```
+
+<h2 id="licence">Licence</h2>
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License.
+Commercial use is prohibited without explicit permission. For commercial inquiries, contact jamzsmith109@gmail.com
