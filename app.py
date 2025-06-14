@@ -9,6 +9,12 @@ import requests
 import pywinstyles, sys
 import pystray
 import time
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename=os.path.join(os.getenv('APPDATA'), "discustom", "discustom.log"), level=logging.INFO)
+time_data = time.localtime()
+logger.info(f"{time_data.tm_mday}/{time_data.tm_mon}/{time_data.tm_year} : {time_data.tm_hour}-{time_data.tm_min}:{time_data.tm_sec}")
 
 from pypresence import Presence
 from CTkMessagebox import CTkMessagebox
@@ -22,7 +28,7 @@ icon_path = os.path.join(base_path, 'assets', 'icon.ico')
 
 class fs:
  def __init__(self):
-  print("starting file system")
+  logger.info("starting file system")
 
   self.appdata_file_path = os.path.join(os.getenv('APPDATA'), "discustom")
   self.data_file_path = os.path.join(os.getenv('APPDATA'), "discustom", "data")
@@ -96,12 +102,12 @@ class fs:
     shell_link.SetWorkingDirectory(os.path.dirname(file_path))
     persist_file = shell_link.QueryInterface(pythoncom.IID_IPersistFile)
     persist_file.Save(shortcut_path, 0)
-    print(f"Shortcut created at {shortcut_path}")
+    logger.info(f"Shortcut created at {shortcut_path}")
   except ImportError:
-    print("pywin32 is required to create shortcut. You can install it with 'pip install pywin32'")
+    logger.error("pywin32 is required to create shortcut. You can install it with 'pip install pywin32'")
 
  def remove_from_startup(self):
-  print(f"Startup path: {self.startup_path}")
+  logger.info(f"Startup path: {self.startup_path}")
   shortcut_path = os.path.join(self.startup_path, 'discustom.lnk')
 
   try:
@@ -140,11 +146,11 @@ FS = fs()
 
 class App():
  def __init__(self):
-  print("starting gui")
+  logger.info("starting gui")
 
   self.root = tk.Tk()
   self.root.geometry("600x320")
-  self.root.title('Discustom by @nero')
+  self.root.title('Discustom v1.21 by @nero')
   self.root.resizable(False, False)
 
   self.presence_enabled = False
@@ -250,6 +256,8 @@ class App():
   self.status_manager.stop_all_threads()
   self.presence_manager.stop_all_threads()
 
+  logger.info('closing.')
+
   time.sleep(2)
 
   for thread in threading.enumerate():
@@ -264,9 +272,6 @@ class App():
   self.menu = (item('Open', self.open_window), item('Exit', self.close))
   self.icon = pystray.Icon("discustom", self.image, "discustom", self.menu)
   self.icon.run()
-
- def start_up(self):
-  ...
 
  def main_page(self):
   main_frame = ctk.CTkScrollableFrame(self.content_frame, label_anchor='w', label_text='Home', width=450, height=300)
@@ -431,10 +436,14 @@ class App():
   small_image = self.small_img_var.get()
   small_text = self.small_img_text_var.get()
 
-  if state == "" or details == "" or large_image == "" or large_text == "" or small_image == "" or small_text == "":
-   CTkMessagebox(self.scroll_frame, message="You need to ensure all fields are filled.", icon='cancel')
+  if large_image == "" or large_text == "" or small_image == "" or small_text == "":
+   CTkMessagebox(self.scroll_frame, message="You need to ensure image fields are filled.", icon='cancel')
    return
   
+  if state == "" and details == "":
+   CTkMessagebox(self.scroll_frame, message="You need to have either State or Details entry filled.", icon='cancel')
+   return
+
   save_presence_data = {  
    "enabled": self.pre_enabled_var.get(),
    "data": {
@@ -513,7 +522,7 @@ class tooltip():
 
 class presence_manager:
  def __init__(self):
-  print('starting presence manager')
+  logger.info('starting presence manager')
   self.config_data = FS.load_config()
   self.presence_data = FS.load_presence()
   self.settings_file = FS.settings_file_path
@@ -553,7 +562,7 @@ class presence_manager:
   while not self.update_presence_stop_event.is_set():
    is_difference = self.difference()
    if not self.old_presence_data['enabled']:
-    print('presence closed.')
+    logger.info('presence closed.')
     self.presence.close()
     self.presence = None
     self.connect_presence_event.clear()
@@ -565,15 +574,19 @@ class presence_manager:
     break
 
    if is_difference:
-    print("presence updated")
+    logger.info("presence updated")
     presence_data = {
-      "state": self.old_presence_data['data']['state'],
-      "details": self.old_presence_data['data']['details'],
       "large_image": self.old_presence_data['data']['large_image'],
       "large_text": self.old_presence_data['data']['large_image_text'],
       "small_image": self.old_presence_data['data']['small_image'],
-      "small_text": self.old_presence_data['data']['large_image_text'],
+      "small_text": self.old_presence_data['data']['small_image_text'],
     }
+
+    if self.old_presence_data['data']['state'] != "":
+      presence_data['state'] = self.old_presence_data['data']['state']
+
+    if self.old_presence_data['data']['details'] != "":
+      presence_data['details'] = self.old_presence_data['data']['details']
 
     self.presence.update(**presence_data)
 
@@ -586,7 +599,7 @@ class presence_manager:
    try:
     self.presence = Presence(self.config_data['client_id'])
    except:
-    print("failed presence init")
+    logger.error("failed presence init")
 
   attempt_amount = 0
   while not self.connect_presence_event.is_set():
@@ -603,18 +616,18 @@ class presence_manager:
    self.update_presence_stop_event.clear()
    try:
     self.presence.connect()
-    print("connection established")
+    logger.info("connection established")
     self.update_presence_thread = threading.Thread(target=self.update_presence, name="update_presence_thread", daemon=True)
     self.update_presence_thread.start()
     self.connect_presence_event.set()
     continue
    except:
     if attempt_amount == 4:
-     print("failed connection, 4 attempts have been made and failed. Closing.")
+     logger.error("failed connection, 4 attempts have been made and failed. Closing.")
      self.connect_presence_event.set()
      break
 
-    print(f"failed connection, retrying in 5 seconds. attempt: {attempt_amount}")
+    logger.error(f"failed connection, retrying in 5 seconds. attempt: {attempt_amount}")
     attempt_amount += 1
 
    self.connect_presence_event.wait(5)
@@ -622,14 +635,14 @@ class presence_manager:
  def start_presence(self):
   if hasattr(self, 'update_presence_thread'):
    if self.update_presence_thread != None and self.update_presence_thread.is_alive():
-    print("thread already alive.")
+    logger.info("thread already alive.")
     return
    
-  print("attempting connection...")
+  logger.info("attempting connection...")
   try:
    self.connect()
   except:
-   print("connection failed...")
+   logger.error("connection failed...")
    self.check_client_id_stop_event.set()
    return
 
@@ -656,7 +669,7 @@ class presence_manager:
 
 class status_manager:
  def __init__(self):
-  print('starting status manager')
+  logger.info('starting status manager')
 
   self.check_token_stop_event = threading.Event()
   self.update_status_stop_event = threading.Event()
@@ -717,7 +730,7 @@ class status_manager:
         if resp.status_code == 401:
           return
       except Exception as e:
-        print(f"Error updating status: {e}")
+        logger.error(f"Error updating status: {e}")
         continue
 
       self.update_status_stop_event.wait(self.data['time_cycle'])
@@ -811,5 +824,5 @@ if __name__ == "__main__":
  except KeyboardInterrupt:
   app.root.destroy()
  except Exception as e:
-  print(e)
+  logger.error(e)
   app.root.destroy()
