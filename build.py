@@ -3,9 +3,7 @@ import shutil
 import os
 
 app_path = str(os.path.dirname(os.path.realpath(__file__)) + '\\app.py')
-assets_path = str(os.path.dirname(os.path.realpath(__file__)) + '\\assets')
 icon_path = str(os.path.dirname(os.path.realpath(__file__)) + '\\assets\\icon.ico')
-build_path = str(os.path.dirname(os.path.realpath(__file__)) + '\\dist\\assets')
 
 def build():
  shutil.rmtree('dist', ignore_errors=True)
@@ -17,7 +15,7 @@ def build():
   '--onefile',
   '--windowed',
   '--icon=' + icon_path,
-  '--add-data=' + assets_path + ';assets',
+  '--version-file=' + version_path
  ])
 
 if __name__ == '__main__':
