@@ -1,38 +1,38 @@
-import threading 
-import os
 import customtkinter as ctk
 import tkinter as tk
-import sv_ttk
-import glob
 import json
-import requests
-import pywinstyles, sys
-import pystray
-import time
-import base64
 import logging
 
+from threading import Thread, Event
+from threading import enumerate as enum_threads
+from sv_ttk import get_theme, set_theme
+from pywinstyles import change_header_color, apply_style
+from sys import getwindowsversion
+from requests import patch
+from os import remove, rmdir, path, getenv, mkdir, getcwd
+from time import sleep, localtime
+from base64 import b64decode
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
 from pypresence import Presence
 from CTkMessagebox import CTkMessagebox
-from customtkinter import CTkImage
 from tkinter import ttk
 from PIL import ImageTk, Image
 from pystray import MenuItem as item
+from pystray import Icon
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename=os.path.join(os.getenv('APPDATA'), "discustom", "discustom.log"), level=logging.INFO)
-handler = RotatingFileHandler(os.path.join(os.getenv('APPDATA'), "discustom", "discustom.log"), maxBytes=1_000_000, backupCount=2)
-time_data = time.localtime()
+logging.basicConfig(filename=path.join(getenv('APPDATA'), "discustom", "discustom.log"), level=logging.INFO)
+handler = RotatingFileHandler(path.join(getenv('APPDATA'), "discustom", "discustom.log"), maxBytes=1_000_000, backupCount=2)
+time_data = localtime()
 logger.info(f"{time_data.tm_mday}/{time_data.tm_mon}/{time_data.tm_year} : {time_data.tm_hour}-{time_data.tm_min}:{time_data.tm_sec}")
 
 def b64_to_pil_image(b64_image_data: str) -> Image.Image:
-  image_data = base64.b64decode(b64_image_data)
+  image_data = b64decode(b64_image_data)
   return Image.open(BytesIO(image_data))
 
 def b64_to_image(b64_image_data: str, is_tab_image: bool = False) -> ImageTk.PhotoImage:
- image_data = base64.b64decode(b64_image_data)
+ image_data = b64decode(b64_image_data)
  image_bytes = Image.open(BytesIO(image_data))
  if is_tab_image: 
   image_bytes = image_bytes.resize((30, 30))
@@ -40,7 +40,7 @@ def b64_to_image(b64_image_data: str, is_tab_image: bool = False) -> ImageTk.Pho
  return (ImageTk.PhotoImage(image_bytes))
 
 def b64_to_ctkimage(b64_image_data: str) -> ctk.CTkImage:
- image_data = base64.b64decode(b64_image_data)
+ image_data = b64decode(b64_image_data)
  image_bytes = Image.open(BytesIO(image_data))
 
  return ctk.CTkImage(light_image=image_bytes, size=(10, 10))
@@ -58,26 +58,26 @@ class fs:
  def __init__(self):
   logger.info("starting file system")
 
-  self.appdata_file_path = os.path.join(os.getenv('APPDATA'), "discustom")
-  self.data_file_path = os.path.join(os.getenv('APPDATA'), "discustom", "data")
-  self.settings_file_path = os.path.join(self.data_file_path, 'settings.json')
-  self.status_file_path = os.path.join(self.data_file_path, 'status.json')
-  self.presence_file_path = os.path.join(self.data_file_path, 'presence.json')
-  self.startup_path = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+  self.appdata_file_path = path.join(getenv('APPDATA'), "discustom")
+  self.data_file_path = path.join(getenv('APPDATA'), "discustom", "data")
+  self.settings_file_path = path.join(self.data_file_path, 'settings.json')
+  self.status_file_path = path.join(self.data_file_path, 'status.json')
+  self.presence_file_path = path.join(self.data_file_path, 'presence.json')
+  self.startup_path = path.join(getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
 
   if not self.check_appdata():
    self.create_appdata_folder()
 
  def check_appdata(self):
-  return os.path.exists(self.appdata_file_path)
+  return path.exists(self.appdata_file_path)
  
  def create_appdata_folder(self):
-  os.mkdir(self.appdata_file_path)
-  os.mkdir(self.data_file_path)
+  mkdir(self.appdata_file_path)
+  mkdir(self.data_file_path)
 
  def remove_appdata_folder(self):
-  os.rmdir(self.data_file_path)
-  os.rmdir(self.appdata_file_path) # I don't if I will ever use it
+  rmdir(self.data_file_path)
+  rmdir(self.appdata_file_path) # I don't if I will ever use it
 
  def save_presence(self, presence_data):
   with open(self.presence_file_path, 'w') as file:
@@ -114,21 +114,21 @@ class fs:
    return default_data
 
  def add_to_startup(self):
-  file_path = os.getcwd() + '\\discustom.exe'
-  shortcut_path = os.path.join(self.startup_path, 'discustom.lnk')
+  file_path = getcwd() + '\\discustom.exe'
+  shortcut_path = path.join(self.startup_path, 'discustom.lnk')
 
   try:
-    import pythoncom
-    from win32com.shell import shell, shellcon
+    from pythoncom import IID_IPersistFile, CoCreateInstance, CLSCTX_INPROC_SERVER
+    from win32com import shell
 
-    shell_link = pythoncom.CoCreateInstance(
+    shell_link = CoCreateInstance(
       shell.CLSID_ShellLink, None,
-      pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
+      CLSCTX_INPROC_SERVER, shell.IID_IShellLink
     )
     shell_link.SetPath(file_path)
     shell_link.SetDescription('Start Discustom')
-    shell_link.SetWorkingDirectory(os.path.dirname(file_path))
-    persist_file = shell_link.QueryInterface(pythoncom.IID_IPersistFile)
+    shell_link.SetWorkingDirectory(path.dirname(file_path))
+    persist_file = shell_link.QueryInterface(IID_IPersistFile)
     persist_file.Save(shortcut_path, 0)
     logger.info(f"Shortcut created at {shortcut_path}")
   except ImportError:
@@ -136,11 +136,11 @@ class fs:
 
  def remove_from_startup(self):
   logger.info(f"Startup path: {self.startup_path}")
-  shortcut_path = os.path.join(self.startup_path, 'discustom.lnk')
+  shortcut_path = path.join(self.startup_path, 'discustom.lnk')
 
   try:
-    if os.path.exists(shortcut_path):
-      os.remove(shortcut_path)
+    if path.exists(shortcut_path):
+      remove(shortcut_path)
       print(f"Shortcut removed from {shortcut_path}")
     else:
       print("No startup shortcut found.")
@@ -148,8 +148,8 @@ class fs:
     print(f"Error removing shortcut: {e}")
 
  def check_startup(self):
-  shortcut_path = os.path.join(self.startup_path, 'discustom.lnk')
-  return os.path.exists(shortcut_path)
+  shortcut_path = path.join(self.startup_path, 'discustom.lnk')
+  return path.exists(shortcut_path)
 
  def load_status(self):
   try:
@@ -178,7 +178,7 @@ class App():
 
   self.root = tk.Tk()
   self.root.geometry("600x320")
-  self.root.title('Discustom v1.32 by @nero')
+  self.root.title('Discustom v1.34 by @nero')
   self.root.resizable(False, False)
 
   self.presence_enabled = False
@@ -197,8 +197,6 @@ class App():
   self.root.protocol("WM_DELETE_WINDOW", self.minimise)
   if self.config_data['start_minimized'] == True:
    self.minimise()
-
-  self.cur_status_msg = self.status_manager.cur_line
 
   self.tab_frame = ttk.Frame(self.root, width=100)
   self.tab_frame.pack(
@@ -224,6 +222,8 @@ class App():
    { "image": status_image, "label": "Status" },
    { "image": settings_image, "label": "Settings" }
   ]
+
+  self.cur_status_msg = "Loading.."
 
   self.remove_image = b64_to_ctkimage(remove_image_b64)
   self.add_image = b64_to_ctkimage(add_image_b64)
@@ -253,27 +253,26 @@ class App():
 
   self.show_tab(0)
 
-  sv_ttk.set_theme('dark', self.root)
+  set_theme('dark', self.root)
 
   self.apply_theme_to_titlebar()
 
+ def refresh_status_msg(self):
+  self.cur_status_msg = self.status_manager.cur_line
+  logger.info(f'status has been set to {self.cur_status_msg}')
+  self.status_msg.configure(text=f"Status Message - {self.cur_status_msg}")
+  self.status_msg.after((self.config_data['time_cycle'] * 1000) + 150, lambda: self.refresh_status_msg())
+
  def apply_theme_to_titlebar(self):
-  version = sys.getwindowsversion()
+  version = getwindowsversion()
 
   if version.major == 10 and version.build >= 22000:
-   pywinstyles.change_header_color(self.root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
+   change_header_color(self.root, "#1c1c1c" if get_theme() == "dark" else "#fafafa")
   elif version.major == 10:
-   pywinstyles.apply_style(self.root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
+   apply_style(self.root, "dark" if get_theme() == "dark" else "normal")
 
    self.root.wm_attributes("-alpha", 0.99)
    self.root.wm_attributes("-alpha", 1)
-
- def find_icons(self):
-  assets_path = os.path.join(os.getcwd(), 'assets')
-  assets_path_files = glob.glob(assets_path + '/*.jpg')
-  self.icon_paths = []
-  for file in assets_path_files:
-   self.icon_paths.append(file)
 
  def show_tab(self, index):
   for widget in self.content_frame.winfo_children():
@@ -284,7 +283,8 @@ class App():
  def bring_to_front(self):
   self.root.deiconify()
   self.root.lift()
-  self.root.focus_force()
+  self.root.attributes('-topmost', True)
+  self.root.after(0, lambda: self.root.attributes('-topmost', False))
 
  def open_window(self):
   self.icon.stop()
@@ -299,9 +299,9 @@ class App():
 
   logger.info('closing.')
 
-  time.sleep(2)
+  sleep(2)
 
-  for thread in threading.enumerate():
+  for thread in enum_threads():
    if thread.name != "MainThread":
     thread.join(timeout=1)
 
@@ -311,7 +311,7 @@ class App():
   self.root.withdraw()
   self.image = b64_to_pil_image(icon_image_b64)
   self.menu = (item('Open', self.open_window), item('Exit', self.close))
-  self.icon = pystray.Icon("discustom", self.image, "discustom", self.menu)
+  self.icon = Icon("discustom", self.image, "discustom", self.menu)
   self.icon.run()
 
  def main_page(self):
@@ -320,6 +320,14 @@ class App():
 
   ctk.CTkLabel(main_frame, text="You're actually stupid, James", font=('Verdana', 9)).pack(padx=5, pady=2, anchor='w')
   ctk.CTkLabel(main_frame, text="I was going todo more but I don't know what to put", font=('Verdana', 9)).pack(padx=5, pady=2, anchor='w')
+  
+  self.separator(main_frame)
+
+  if self.status_data['enabled']:
+    # ctk.CTkLabel(main_frame, text="Status Message", font=('Verdana', 9)).pack(padx=5, pady=2, anchor='w')
+    self.status_msg = ctk.CTkLabel(main_frame, text=f"Status Message - {self.cur_status_msg}", font=('Verdana', 11))
+    self.status_msg.pack(padx=5, pady=2, anchor='w')
+    self.status_msg.after(400, lambda: self.refresh_status_msg())
 
  def presence_page(self):
   self.presence_data = FS.load_presence()
@@ -339,8 +347,10 @@ class App():
 
   ctk.CTkLabel(scroll_frame, text="Activity Type", font=('Verdana', 11)).pack(padx=5, pady=(5, 2), anchor='w')
   self.activity_type_var = ctk.StringVar(scroll_frame, value=[k for k, v in self.activity_types.items() if v == self.presence_data['data']['activity_type']][0])
-  self.activity_type = ctk.CTkComboBox(scroll_frame, width=400, values=list(self.activity_types.keys()), corner_radius=20, variable=self.activity_type_var)
+  self.activity_type = ctk.CTkComboBox(scroll_frame, width=400, values=list(self.activity_types.keys()), corner_radius=10, variable=self.activity_type_var)
   self.activity_type.pack(padx=5, pady=2, anchor='w')
+
+  tooltip(self.activity_type, "Choose what type of activity you are doing.")
 
   ctk.CTkLabel(scroll_frame, text="State", font=('Verdana', 11)).pack(padx=5, pady=(5, 2), anchor='w')
   self.state_var = tk.StringVar(scroll_frame, value=self.presence_data['data']['state'])
@@ -389,6 +399,8 @@ class App():
   ctk.CTkButton(scroll_frame, width=200, image=self.save_image, compound='left', text="Save Presence", command=self.save_presence_data).pack(pady=(15, 15), anchor='center')
 
  def status_page(self):
+  self.status_data = FS.load_status()
+
   status_frame = ctk.CTkScrollableFrame(self.content_frame, label_anchor='w', label_text='Status', width=450, height=300)
   status_frame.pack(padx=5, pady=2)
 
@@ -431,6 +443,8 @@ class App():
   ctk.CTkButton(status_frame, width=200, image=self.remove_image, compound='left', text="Remove Status", command=self.remove_pass_to_status_manager).pack(pady=(15, 15), anchor='center')
 
  def settings_page(self):
+  self.config_data = FS.load_config()
+
   settings_frame = ctk.CTkScrollableFrame(self.content_frame, label_anchor='w', label_text='Settings', width=450, height=300)
   settings_frame.pack(padx=5, pady=2)
 
@@ -579,11 +593,11 @@ class presence_manager:
   self.settings_file = FS.settings_file_path
   self.presence = None
 
-  self.check_client_id_stop_event = threading.Event()
-  self.update_presence_stop_event = threading.Event()
-  self.connect_presence_event = threading.Event()
+  self.check_client_id_stop_event = Event()
+  self.update_presence_stop_event = Event()
+  self.connect_presence_event = Event()
   
-  self.check_client_id_thread = threading.Thread(target=self.check_client_id, name='check_client_id', daemon=True)
+  self.check_client_id_thread = Thread(target=self.check_client_id, name='check_client_id', daemon=True)
   self.check_client_id_thread.start()
 
  def stop_all_threads(self):
@@ -623,12 +637,12 @@ class presence_manager:
     self.update_presence_stop_event.set()
     self.check_client_id_stop_event.clear()
     self.check_client_id_thread = None
-    self.check_client_id_thread = threading.Thread(target=self.check_client_id, name="check_client_id", daemon=True)
+    self.check_client_id_thread = Thread(target=self.check_client_id, name="check_client_id", daemon=True)
     self.check_client_id_thread.start()
     break
 
    if is_difference:
-    time_data_diff = time.localtime()
+    time_data_diff = localtime()
     logger.info(f"presence updated - {time_data_diff.tm_hour}-{time_data_diff.tm_min}:{time_data_diff.tm_sec}")
     presence_data = {
       "activity_type": self.old_presence_data['data']['activity_type'],
@@ -670,7 +684,7 @@ class presence_manager:
     self.update_presence_stop_event.set()
     self.check_client_id_stop_event.clear()
     self.check_client_id_thread = None
-    self.check_client_id_thread = threading.Thread(target=self.check_client_id, name="check_client_id", daemon=True)
+    self.check_client_id_thread = Thread(target=self.check_client_id, name="check_client_id", daemon=True)
     self.check_client_id_thread.start()
     break
   
@@ -678,7 +692,7 @@ class presence_manager:
    try:
     self.presence.connect()
     logger.info("connection established")
-    self.update_presence_thread = threading.Thread(target=self.update_presence, name="update_presence_thread", daemon=True)
+    self.update_presence_thread = Thread(target=self.update_presence, name="update_presence_thread", daemon=True)
     self.update_presence_thread.start()
     self.connect_presence_event.set()
     continue
@@ -689,7 +703,7 @@ class presence_manager:
      self.update_presence_stop_event.set()
      self.check_client_id_stop_event.clear()
      self.check_client_id_thread = None
-     self.check_client_id_thread = threading.Thread(target=self.check_client_id, name="check_client_id", daemon=True)
+     self.check_client_id_thread = Thread(target=self.check_client_id, name="check_client_id", daemon=True)
      self.check_client_id_thread.start()
      continue
 
@@ -737,8 +751,8 @@ class status_manager:
  def __init__(self):
   logger.info('starting status manager')
 
-  self.check_token_stop_event = threading.Event()
-  self.update_status_stop_event = threading.Event()
+  self.check_token_stop_event = Event()
+  self.update_status_stop_event = Event()
 
   self.settings_file = FS.settings_path()
   self.status_file = FS.status_path()
@@ -747,7 +761,7 @@ class status_manager:
   self.status_lines = FS.load_status()
   self.cur_line = ""
 
-  self.check_token_proc = threading.Thread(target=self.check_token, name="check_token", daemon=True)
+  self.check_token_proc = Thread(target=self.check_token, name="check_token", daemon=True)
   self.check_token_proc.start()
 
  def stop_all_threads(self):
@@ -766,7 +780,7 @@ class status_manager:
       print('status has been disabled. returning back to check_token')
       self.check_token_stop_event.clear()
       self.check_token_proc = None
-      self.check_token_proc = threading.Thread(target=self.check_token, name="check_token", daemon=True)
+      self.check_token_proc = Thread(target=self.check_token, name="check_token", daemon=True)
       self.check_token_proc.start()
       self.update_status_stop_event.set()
       continue
@@ -775,7 +789,7 @@ class status_manager:
       self.update_status_stop_event.wait(self.data['time_cycle'])
       continue
 
-    for statusLine in self.status_lines['statuses']:
+    for status_line in self.status_lines['statuses']:
       if not self.is_enabled():
        break
 
@@ -783,16 +797,16 @@ class status_manager:
         break
 
       jsonData = {
-        "custom_status": { "text": statusLine['msg'] }
+        "custom_status": { "text": status_line['msg'] }
       }
 
-      if statusLine['emoji_name'] != "" and statusLine['emoji_id'] != "":
-        jsonData['custom_status'].update({ "emoji_name": statusLine['emoji_name'], "emoji_id": statusLine['emoji_id'] })
+      if status_line['emoji_name'] != "" and status_line['emoji_id'] != "":
+        jsonData['custom_status'].update({ "emoji_name": status_line['emoji_name'], "emoji_id": status_line['emoji_id'] })
 
-      self.cur_line = statusLine['msg']
+      self.cur_line = status_line['msg']
 
       try:
-        resp = requests.patch('https://discord.com/api/v10/users/@me/settings', headers=self.headers, json=jsonData)
+        resp = patch('https://discord.com/api/v10/users/@me/settings', headers=self.headers, json=jsonData)
         if resp.status_code == 401:
           return
       except Exception as e:
@@ -804,14 +818,14 @@ class status_manager:
  def start_update_status(self):
   self.update_status_stop_event.clear()
 
-  if "update_status" in threading.enumerate():
+  if "update_status" in enum_threads():
    if self.update_status_proc and self.update_status_proc.is_alive():
     return
 
   if not self.token:
    return
 
-  self.update_status_proc = threading.Thread(target=self.update_status, name="update_status", daemon=True)
+  self.update_status_proc = Thread(target=self.update_status, name="update_status", daemon=True)
   self.update_status_proc.start()
 
   self.check_token_stop_event.set()
