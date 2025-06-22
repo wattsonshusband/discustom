@@ -18,7 +18,7 @@
 
 <p align="center">
 
-<img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZXRtMWVmZG1hY2d6MTRodWQyNjhnZjZlaXJuNGZiNXl1cjhhdTdzNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/RJvG5g6u039v2X8ix6/giphy.gif" alt="Demo" width="400px">
+<img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcmF5bGRjZHVvZ2lpYXo3aDh6M292dHY5bHVtOWUwamJ4bzE0ODl2YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/BFmCxXa5sVWl9hl1Xa/giphy.gif" alt="Demo" width="400px">
 </p>
 
 <h2 id="technologies">💻 Technologies</h2>
