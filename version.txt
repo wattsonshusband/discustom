@@ -19,7 +19,7 @@ VSVersionInfo(
           StringStruct('InternalName', 'discustom'),
           StringStruct('OriginalFilename', 'discustom.exe'),
           StringStruct('ProductName', 'Discustom'),
-          StringStruct('ProductVersion', '1.32'),
+          StringStruct('ProductVersion', '1.34'),
           StringStruct('LegalCopyright', '© 2025 .nero. Attribution-NonCommercial 4.0')
         ]
       )
